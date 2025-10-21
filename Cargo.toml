@@ -8,5 +8,7 @@ linfa = "0.8.0"
 linfa-datasets = { version = "0.8.0", features = ["diabetes", "generate", "iris", "linnerud", "winequality"] }
 maplit = "1.0.2"
 ndarray = {version = "0.16.1", features = ["rayon"]}
+ndarray-linalg = { version = "0.17", features = ["openblas"] }
+openblas-src = "0.10.13"
 rayon = "1.11.0"
 syn = "2.0.107"
