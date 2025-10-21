@@ -26,7 +26,7 @@ trait Classifier {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-	const SPLIT_RATIO: f32 = 0.75;
+	const SPLIT_RATIO: f32 = 0.8;
 	let datasets = btreemap![
 		"Iris" => iris().split_with_ratio(SPLIT_RATIO), 
 		"Wine Quality" => winequality().split_with_ratio(SPLIT_RATIO)];
@@ -36,19 +36,21 @@ fn main() -> Result<(), Box<dyn Error>> {
 	];
 	for (clasname, mut classifier) in classifiers {
 		for (datasetname, dataset) in datasets.iter() {
-			let records = dataset.0.records.clone().into_dimensionality()?;
-			let records = records.view();
-			let targets = dataset.0.targets.clone().into_dimensionality()?;
-			let targets = targets.view();
-			let tests = dataset.1.records.clone().into_dimensionality()?;
-			let tests = tests.view();
+			// Train the classifier
+			let records_train = dataset.0.records.clone().into_dimensionality()?;
+			let records_train = records_train.view();
+			let targets_train = dataset.0.targets.clone().into_dimensionality()?;
+			let targets_train = targets_train.view();
 			classifier
-				.fit(records, targets);
-			let targets = dataset.1.targets.clone().into_dimensionality()?;
-			let targets = targets.view();
-			let classif = classifier.score(tests, targets);
+				.fit(records_train, targets_train);
+			// Now begin evaluation
+			let records_eval = dataset.1.records.clone().into_dimensionality()?;
+			let records_eval = records_eval.view();
+			let targets_eval = dataset.1.targets.clone().into_dimensionality()?;
+			let targets_eval = targets_eval.view();
+			let classif = classifier.score(records_eval, targets_eval);
 			println!("{}: score for dataset {}: {:.4}% ({} out of {})", 
-				clasname, datasetname, classif.0 * 100.0, classif.1, targets.len());
+				clasname, datasetname, classif.0 * 100.0, classif.1, targets_eval.len());
 		}
 	}
 	Ok(())
