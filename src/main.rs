@@ -1,6 +1,6 @@
 mod eucdist;
 
-use std::error::Error;
+use std::{collections::HashMap, error::Error};
 
 use maplit::hashmap;
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
@@ -29,8 +29,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let datasets = hashmap![
 		"Iris" => iris(), 
 		"Wine Quality" => winequality()];
-    let classifiers: Vec<Box<dyn Classifier>> = vec![Box::new(EuclideanDistanceClassifier::new())];
-	for mut classifier in classifiers {
+    let classifiers: HashMap<&str, Box<dyn Classifier>> = hashmap![
+		"Euclidean distance" => Box::new(EuclideanDistanceClassifier::new()) as Box<dyn Classifier>
+	];
+	for (clasname, mut classifier) in classifiers {
 		for (datasetname, dataset) in datasets.iter() {
 			let records = dataset.records.clone().into_dimensionality()?;
 			let records = records.view();
@@ -38,7 +40,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 			let targets = targets.view();
 			classifier
 				.fit(records, targets);
-			println!("Score for dataset {}: {}", datasetname, classifier.score(records, targets))
+			println!("{}: Score for dataset {}: {}", clasname, datasetname, classifier.score(records, targets))
 		}
 	}
 	Ok(())
