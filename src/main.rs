@@ -19,7 +19,7 @@ trait Classifier {
 			.zip(targets.iter())
 			.filter(|(pred, true_val)| **pred as usize == **true_val)
 			.count();
-
+		println!("Correct #: {} out of {}", correct, targets.len());
     	correct as f64 / preds.len() as f64
 
 	}
