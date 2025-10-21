@@ -1,0 +1,12 @@
+[package]
+name = "classifiers"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+linfa = "0.8.0"
+linfa-datasets = { version = "0.8.0", features = ["diabetes", "generate", "iris", "linnerud", "winequality"] }
+maplit = "1.0.2"
+ndarray = {version = "0.16.1", features = ["rayon"]}
+rayon = "1.11.0"
+syn = "2.0.107"
