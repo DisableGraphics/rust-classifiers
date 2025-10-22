@@ -9,6 +9,10 @@ linfa-datasets = { version = "0.8.0", features = ["diabetes", "generate", "iris"
 maplit = "1.0.2"
 ndarray = {version = "0.16.1", features = ["rayon"]}
 ndarray-linalg = { version = "0.17", features = ["openblas"] }
+ndarray-rand = "0.15.0"
+ndarray-stats = "0.6.0"
 openblas-src = "0.10.13"
+rand_distr = "0.5.1"
 rayon = "1.11.0"
+statrs = "0.18.0"
 syn = "2.0.107"

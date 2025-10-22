@@ -1,14 +1,19 @@
 mod eucdist;
 mod mahalanobis;
+mod qda;
 extern crate openblas_src;
 
-use std::{collections::BTreeMap, error::Error};
+use std::{collections::BTreeMap, error::Error, io::{stdout, Write}};
 
+use linfa::Dataset;
 use maplit::btreemap;
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
-use linfa_datasets::{iris, winequality};
+use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, Ix1};
+use linfa_datasets::{iris, winequality, self};
+use ndarray_rand::rand_distr::Normal;
+use statrs::distribution::DiscreteUniform;
+use linfa_datasets::generate::make_dataset;
 
-use crate::{eucdist::EuclideanDistanceClassifier, mahalanobis::MahalanobisDistanceClassifier};
+use crate::{eucdist::EuclideanDistanceClassifier, mahalanobis::MahalanobisDistanceClassifier, qda::QDA};
 
 trait Classifier {
 	fn fit(&mut self, data: ArrayView2<f64>, targets: ArrayView1<usize>);
@@ -25,14 +30,27 @@ trait Classifier {
 	}
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn load_datasets() -> Result<BTreeMap<&'static str, (Dataset<f64, usize, Ix1>, Dataset<f64, usize, Ix1>)>, Box<dyn Error>> {
+	let feat_distr = Normal::new(0.5, 5. )?;
+	let target_distr = DiscreteUniform::new(0, 5)?;
+	let dataset = make_dataset(512, 5, 2, feat_distr, target_distr);
+	let dataset: Dataset<f64, usize, Ix1> = Dataset::new(
+		dataset.records, dataset.targets.index_axis(Axis(1), 0).iter().map(|x| *x as usize).collect::<Array1<usize>>());
 	const SPLIT_RATIO: f32 = 0.8;
 	let datasets = btreemap![
 		"Iris" => iris().split_with_ratio(SPLIT_RATIO), 
-		"Wine Quality" => winequality().split_with_ratio(SPLIT_RATIO)];
+		"Wine Quality" => winequality().split_with_ratio(SPLIT_RATIO),
+		"Random Dataset #1" => dataset.split_with_ratio(SPLIT_RATIO)
+		];
+	Ok(datasets)
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+	let datasets = load_datasets()?;
     let classifiers: BTreeMap<&str, Box<dyn Classifier>> = btreemap![
 		"Euclidean distance" => Box::new(EuclideanDistanceClassifier::new()) as Box<dyn Classifier>,
-		"Mahalanobis distance" => Box::new(MahalanobisDistanceClassifier::new()) as Box<dyn Classifier>
+		"Mahalanobis distance" => Box::new(MahalanobisDistanceClassifier::new()) as Box<dyn Classifier>,
+		"Bayesian QDA" => Box::new(QDA::new()) as Box<dyn Classifier>
 	];
 	for (clasname, mut classifier) in classifiers {
 		for (datasetname, dataset) in datasets.iter() {
@@ -51,6 +69,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 			let classif = classifier.score(records_eval, targets_eval);
 			println!("{}: score for dataset {}: {:.4}% ({} out of {})", 
 				clasname, datasetname, classif.0 * 100.0, classif.1, targets_eval.len());
+			let _ = stdout().flush();
 		}
 	}
 	Ok(())
