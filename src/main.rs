@@ -55,17 +55,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 	for (clasname, mut classifier) in classifiers {
 		for (datasetname, dataset) in datasets.iter() {
 			// Train the classifier
-			let records_train = dataset.0.records.clone().into_dimensionality()?;
-			let records_train = records_train.view();
-			let targets_train = dataset.0.targets.clone().into_dimensionality()?;
-			let targets_train = targets_train.view();
+			let records_train = dataset.0.records.view().into_dimensionality()?;
+			let targets_train = dataset.0.targets.view().into_dimensionality()?;
 			classifier
 				.fit(records_train, targets_train);
 			// Now begin evaluation
-			let records_eval = dataset.1.records.clone().into_dimensionality()?;
-			let records_eval = records_eval.view();
-			let targets_eval = dataset.1.targets.clone().into_dimensionality()?;
-			let targets_eval = targets_eval.view();
+			let records_eval = dataset.1.records.view().into_dimensionality()?;
+			let targets_eval = dataset.1.targets.view().into_dimensionality()?;
 			let classif = classifier.score(records_eval, targets_eval);
 			println!("{}: score for dataset {}: {:.4}% ({} out of {})", 
 				clasname, datasetname, classif.0 * 100.0, classif.1, targets_eval.len());
