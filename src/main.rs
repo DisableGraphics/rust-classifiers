@@ -9,7 +9,7 @@ use linfa::Dataset;
 use maplit::btreemap;
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, Ix1};
 use linfa_datasets::{iris, winequality, self};
-use ndarray_rand::{rand::thread_rng, rand_distr::{Distribution, Normal}};
+use ndarray_rand::{rand::{seq::SliceRandom, thread_rng}, rand_distr::{Distribution, Normal}};
 use statrs::distribution::DiscreteUniform;
 use linfa_datasets::generate::make_dataset;
 
@@ -26,7 +26,7 @@ trait Classifier {
 			.zip(targets.iter())
 			.filter(|(pred, true_val)| **pred as usize == **true_val)
 			.count();
-    	(correct as f64 / preds.len() as f64, correct)
+		(correct as f64 / preds.len() as f64, correct)
 	}
 }
 
@@ -40,29 +40,42 @@ fn random_dataset_1() -> Result<Dataset<f64, usize, Ix1>, Box<dyn Error>> {
 }
 
 fn random_dataset_2() -> Result<Dataset<f64, usize, Ix1>, Box<dyn Error>> {
-    let samples_per_class = 512;
-    let n_features = 5;
-    let mut rng = thread_rng();
+	let samples_per_class = 128; // 512 total
+	let n_features = 5;
+	let mut rng = thread_rng();
 
-    // Define a different normal distribution per class
-    let class_means = [(-5.0, 1.0), (0.0, 1.5), (5.0, 1.0), (10.0, 2.0)];
-	let n_classes = class_means.len();
+	// Define a different normal distribution per class (mean, std)
+	let class_params = [(-5.0, 1.0), (0.0, 1.5), (5.0, 1.0), (10.0, 2.0)];
+	let n_classes = n_features;
 
-    let mut records = Array2::<f64>::zeros((n_classes * samples_per_class, n_features));
-    let mut targets = Array1::<usize>::zeros(n_classes * samples_per_class);
+	let mut records = Array2::<f64>::zeros((n_classes * samples_per_class, n_features));
+	let mut targets = Array1::<usize>::zeros(n_classes * samples_per_class);
 
-    for (class_idx, (mean, std)) in class_means.iter().enumerate() {
-        let normal = Normal::new(*mean, *std)?;
-        for i in 0..samples_per_class {
-            let sample_idx = class_idx * samples_per_class + i;
-            for f in 0..n_features {
-                records[[sample_idx, f]] = normal.sample(&mut rng);
-            }
-            targets[sample_idx] = class_idx;
-        }
-    }
+	// Generate samples
+	for (class_idx, (mean, std)) in class_params.iter().enumerate() {
+		let normal = Normal::new(*mean, *std)?;
+		for i in 0..samples_per_class {
+			let sample_idx = class_idx * samples_per_class + i;
+			for f in 0..n_features {
+				records[[sample_idx, f]] = normal.sample(&mut rng);
+			}
+			targets[sample_idx] = class_idx;
+		}
+	}
 
-    Ok(Dataset::new(records, targets))
+	// ---- SHUFFLE THE DATASET ----
+	let mut indices: Vec<usize> = (0..records.nrows()).collect();
+	indices.shuffle(&mut rng);
+
+	let shuffled_records = Array2::from_shape_fn(records.raw_dim(), |(i, j)| {
+		let orig_i = indices[i];
+		records[[orig_i, j]]
+	});
+	let shuffled_targets =
+		Array1::from_shape_fn(targets.len(), |i| targets[indices[i]]);
+
+	Ok(Dataset::new(shuffled_records, shuffled_targets))
+
 }
 
 
@@ -79,7 +92,7 @@ fn load_datasets() -> Result<BTreeMap<&'static str, (Dataset<f64, usize, Ix1>, D
 
 fn main() -> Result<(), Box<dyn Error>> {
 	let datasets = load_datasets()?;
-    let classifiers: BTreeMap<&str, Box<dyn Classifier>> = btreemap![
+	let classifiers: BTreeMap<&str, Box<dyn Classifier>> = btreemap![
 		"Euclidean distance" => Box::new(EuclideanDistanceClassifier::new()) as Box<dyn Classifier>,
 		"Mahalanobis distance" => Box::new(MahalanobisDistanceClassifier::new()) as Box<dyn Classifier>,
 		"Bayesian QDA" => Box::new(QDA::new()) as Box<dyn Classifier>
