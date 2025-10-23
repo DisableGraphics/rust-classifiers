@@ -9,7 +9,7 @@ use linfa::Dataset;
 use maplit::btreemap;
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, Ix1};
 use linfa_datasets::{iris, winequality, self};
-use ndarray_rand::rand_distr::Normal;
+use ndarray_rand::{rand::thread_rng, rand_distr::{Distribution, Normal}};
 use statrs::distribution::DiscreteUniform;
 use linfa_datasets::generate::make_dataset;
 
@@ -30,17 +30,49 @@ trait Classifier {
 	}
 }
 
-fn load_datasets() -> Result<BTreeMap<&'static str, (Dataset<f64, usize, Ix1>, Dataset<f64, usize, Ix1>)>, Box<dyn Error>> {
+fn random_dataset_1() -> Result<Dataset<f64, usize, Ix1>, Box<dyn Error>> {
 	let feat_distr = Normal::new(0.5, 5. )?;
 	let target_distr = DiscreteUniform::new(0, 5)?;
 	let dataset = make_dataset(512, 5, 2, feat_distr, target_distr);
 	let dataset: Dataset<f64, usize, Ix1> = Dataset::new(
 		dataset.records, dataset.targets.index_axis(Axis(1), 0).iter().map(|x| *x as usize).collect::<Array1<usize>>());
+	Ok(dataset)
+}
+
+fn random_dataset_2() -> Result<Dataset<f64, usize, Ix1>, Box<dyn Error>> {
+    let samples_per_class = 512;
+    let n_features = 5;
+    let mut rng = thread_rng();
+
+    // Define a different normal distribution per class
+    let class_means = [(-5.0, 1.0), (0.0, 1.5), (5.0, 1.0), (10.0, 2.0)];
+	let n_classes = class_means.len();
+
+    let mut records = Array2::<f64>::zeros((n_classes * samples_per_class, n_features));
+    let mut targets = Array1::<usize>::zeros(n_classes * samples_per_class);
+
+    for (class_idx, (mean, std)) in class_means.iter().enumerate() {
+        let normal = Normal::new(*mean, *std)?;
+        for i in 0..samples_per_class {
+            let sample_idx = class_idx * samples_per_class + i;
+            for f in 0..n_features {
+                records[[sample_idx, f]] = normal.sample(&mut rng);
+            }
+            targets[sample_idx] = class_idx;
+        }
+    }
+
+    Ok(Dataset::new(records, targets))
+}
+
+
+fn load_datasets() -> Result<BTreeMap<&'static str, (Dataset<f64, usize, Ix1>, Dataset<f64, usize, Ix1>)>, Box<dyn Error>> {
 	const SPLIT_RATIO: f32 = 0.8;
 	let datasets = btreemap![
 		"Iris" => iris().split_with_ratio(SPLIT_RATIO), 
 		"Wine Quality" => winequality().split_with_ratio(SPLIT_RATIO),
-		"Random Dataset #1" => dataset.split_with_ratio(SPLIT_RATIO)
+		"Random Dataset #1" => random_dataset_1()?.split_with_ratio(SPLIT_RATIO),
+		"Random Dataset #2" => random_dataset_2()?.split_with_ratio(SPLIT_RATIO)
 		];
 	Ok(datasets)
 }
