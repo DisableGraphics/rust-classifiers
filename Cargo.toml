@@ -4,10 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+csv = "1.4.0"
 linfa = "0.8.0"
 linfa-datasets = { version = "0.8.0", features = ["diabetes", "generate", "iris", "linnerud", "winequality"] }
 maplit = "1.0.2"
 ndarray = {version = "0.16.1", features = ["rayon"]}
+ndarray-csv = "0.5.3"
 ndarray-linalg = { version = "0.17", features = ["openblas"] }
 ndarray-rand = "0.15.0"
 ndarray-stats = "0.6.0"

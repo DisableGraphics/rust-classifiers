@@ -3,12 +3,13 @@ mod mahalanobis;
 mod qda;
 extern crate openblas_src;
 
-use std::{collections::BTreeMap, error::Error, io::{stdout, Write}};
+use std::{collections::BTreeMap, error::Error, fs::File, io::{stdout, Write}, path::Path};
 
 use linfa::Dataset;
 use maplit::btreemap;
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, Ix1};
+use ndarray::{s, Array1, Array2, ArrayView1, ArrayView2, Axis, Ix1};
 use linfa_datasets::{iris, winequality, self};
+use ndarray_csv::Array2Reader;
 use ndarray_rand::{rand::{seq::SliceRandom, thread_rng}, rand_distr::{Distribution, Normal}};
 use statrs::distribution::DiscreteUniform;
 use linfa_datasets::generate::make_dataset;
@@ -28,6 +29,19 @@ trait Classifier {
 			.count();
 		(correct as f64 / preds.len() as f64, correct)
 	}
+}
+
+fn dataset_from_file<P: AsRef<Path>>(p: P) -> Result<Dataset<f64, usize, Ix1>, Box<dyn Error>> {
+	let file = File::open(p)?;
+	let mut reader = csv::ReaderBuilder::new().has_headers(true).from_reader(file);
+	let array: Array2<f64> = reader.deserialize_array2_dynamic()?;
+
+	let n_features = array.shape()[1] - 1;
+    let (features, targets) = (
+        array.slice(s![.., 0..n_features]).to_owned(),
+        array.slice(s![.., n_features]).iter().map(|x| *x as usize).collect(),
+    );
+	Ok(Dataset::new(features, targets))
 }
 
 fn random_dataset_1() -> Result<Dataset<f64, usize, Ix1>, Box<dyn Error>> {
@@ -85,7 +99,9 @@ fn load_datasets() -> Result<BTreeMap<&'static str, (Dataset<f64, usize, Ix1>, D
 		"Iris" => iris().split_with_ratio(SPLIT_RATIO), 
 		"Wine Quality" => winequality().split_with_ratio(SPLIT_RATIO),
 		"Random Dataset #1" => random_dataset_1()?.split_with_ratio(SPLIT_RATIO),
-		"Random Dataset #2" => random_dataset_2()?.split_with_ratio(SPLIT_RATIO)
+		"Random Dataset #2" => random_dataset_2()?.split_with_ratio(SPLIT_RATIO),
+		"Test CSV dataset" => dataset_from_file("datasets/dataset.csv")?.split_with_ratio(SPLIT_RATIO),
+		"Clickbait" => dataset_from_file("datasets/clickbait_title_classification.csv")?.split_with_ratio(SPLIT_RATIO),
 		];
 	Ok(datasets)
 }

@@ -100,10 +100,12 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 name = "classifiers"
 version = "0.1.0"
 dependencies = [
+ "csv",
  "linfa",
  "linfa-datasets",
  "maplit",
  "ndarray",
+ "ndarray-csv",
  "ndarray-linalg",
  "ndarray-rand",
  "ndarray-stats",
