@@ -5,7 +5,7 @@ extern crate openblas_src;
 
 use std::{collections::BTreeMap, error::Error, fs::File, io::{stdout, Write}, path::Path};
 
-use linfa::Dataset;
+use linfa::{Dataset, prelude::{ConfusionMatrix, ToConfusionMatrix}};
 use maplit::btreemap;
 use ndarray::{s, Array1, Array2, ArrayView1, ArrayView2, Axis, Ix1};
 use linfa_datasets::{iris, winequality, self};
@@ -20,14 +20,16 @@ trait Classifier {
 	fn fit(&mut self, data: ArrayView2<f64>, targets: ArrayView1<usize>);
 	fn decision_function(&self, data: ArrayView2<f64>) -> Array2<f64>;
 	fn predict(&self, data: ArrayView2<f64>) -> Array1<usize>;
-	fn score(&self, data: ArrayView2<f64>, targets: ArrayView1<usize>) -> (f64, usize) {
+	fn score(&self, data: ArrayView2<f64>, targets: ArrayView1<usize>) -> (ConfusionMatrix<usize>, usize) {
 		let preds = self.predict(data);
+		let cm = preds.confusion_matrix(&targets).unwrap();
+
 		assert_eq!(preds.len(), targets.len(), "Vectors must have the same length");
 		let correct = preds.iter()
 			.zip(targets.iter())
 			.filter(|(pred, true_val)| **pred as usize == **true_val)
 			.count();
-		(correct as f64 / preds.len() as f64, correct)
+		(cm, correct)
 	}
 }
 
@@ -124,8 +126,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 			let records_eval = dataset.1.records.view().into_dimensionality()?;
 			let targets_eval = dataset.1.targets.view().into_dimensionality()?;
 			let classif = classifier.score(records_eval, targets_eval);
-			println!("{}: score for dataset {}: {:.4}% ({} out of {})", 
-				clasname, datasetname, classif.0 * 100.0, classif.1, targets_eval.len());
+			println!("{} score for {}:", clasname, datasetname);
+			println!("\tCorrect predictions: {} out of {} ({}%)", classif.1, targets_eval.len(), (classif.1 as f64 / targets_eval.len() as f64)*100.0);
+			println!("\tAccuracy: {}", classif.0.accuracy());
+			println!("\tPrecision: {}", classif.0.precision());
+			println!("\tRecall: {}", classif.0.recall());
+			println!("\tF1 score: {}", classif.0.f1_score());
+
 			let _ = stdout().flush();
 		}
 	}
