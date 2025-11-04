@@ -20,16 +20,11 @@ trait Classifier {
 	fn fit(&mut self, data: ArrayView2<f64>, targets: ArrayView1<usize>);
 	fn decision_function(&self, data: ArrayView2<f64>) -> Array2<f64>;
 	fn predict(&self, data: ArrayView2<f64>) -> Array1<usize>;
-	fn score(&self, data: ArrayView2<f64>, targets: ArrayView1<usize>) -> (ConfusionMatrix<usize>, usize) {
+	fn score(&self, data: ArrayView2<f64>, targets: ArrayView1<usize>) -> ConfusionMatrix<usize> {
 		let preds = self.predict(data);
-		let cm = preds.confusion_matrix(&targets).unwrap();
-
 		assert_eq!(preds.len(), targets.len(), "Vectors must have the same length");
-		let correct = preds.iter()
-			.zip(targets.iter())
-			.filter(|(pred, true_val)| **pred as usize == **true_val)
-			.count();
-		(cm, correct)
+		let cm = preds.confusion_matrix(&targets).unwrap();
+		cm
 	}
 }
 
@@ -127,11 +122,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 			let targets_eval = dataset.1.targets.view().into_dimensionality()?;
 			let classif = classifier.score(records_eval, targets_eval);
 			println!("{} score for {}:", clasname, datasetname);
-			println!("\tCorrect predictions: {} out of {} ({}%)", classif.1, targets_eval.len(), (classif.1 as f64 / targets_eval.len() as f64)*100.0);
-			println!("\tAccuracy: {}", classif.0.accuracy());
-			println!("\tPrecision: {}", classif.0.precision());
-			println!("\tRecall: {}", classif.0.recall());
-			println!("\tF1 score: {}", classif.0.f1_score());
+			println!("\tAccuracy: {}", classif.accuracy());
+			println!("\tPrecision: {}", classif.precision());
+			println!("\tRecall: {}", classif.recall());
+			println!("\tF1 score: {}", classif.f1_score());
 
 			let _ = stdout().flush();
 		}
