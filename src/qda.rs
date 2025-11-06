@@ -5,20 +5,20 @@ use ndarray_linalg::{Inverse, Determinant};
 
 use crate::Classifier;
 
-pub struct QDA {
+pub struct Qda {
 	mu: Option<Array2::<f64>>,
 	sigma: Option<Vec<Array2<f64>>>,
 	priors: Option<Array1<f64>>,
 	classes: Option<Vec<usize>>,
 }
 
-impl QDA {
+impl Qda {
 	pub fn new() -> Self {
 		Self { mu: None, sigma: None, priors: None, classes: None }
 	}
 }
 
-impl Classifier for QDA {
+impl Classifier for Qda {
 	fn fit(&mut self, data: ndarray::ArrayView2<f64>, targets: ndarray::ArrayView1<usize>) {
 		let n_features = data.len_of(Axis(1));
 		let classes: Vec<usize> = targets.iter().copied().collect::<HashSet<_>>().into_iter().collect();
@@ -64,10 +64,10 @@ impl Classifier for QDA {
 				let diff = row - &mean;
 				// outer product: diff (n_features) × diff^T (n_features)
 				let outer = diff.view().insert_axis(Axis(1)).dot(&diff.view().insert_axis(Axis(0)));
-				sigma = sigma + &outer;
+				sigma += &outer;
 			}
 
-			sigma = sigma / (n - 1.0);
+			sigma /= n - 1.0;
 			covariances.push(sigma);
 		}
 		let n_total = targets.len() as f64;
@@ -130,7 +130,9 @@ impl Classifier for QDA {
 			.map(|row| {
 				let idx = row.iter()
 					.enumerate()
-					.max_by(|a, b| a.1.partial_cmp(b.1).expect(&format!("{} == {} = none", a.1, b.1)))
+					.max_by(|a, b| a.1
+						.partial_cmp(b.1)
+						.unwrap_or_else(|| panic!("{} == {} = none", a.1, b.1)))
 					.unwrap()
 					.0;
 				classes[idx]

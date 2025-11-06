@@ -14,7 +14,7 @@ use ndarray_rand::{rand::{seq::SliceRandom, thread_rng}, rand_distr::{Distributi
 use statrs::distribution::DiscreteUniform;
 use linfa_datasets::generate::make_dataset;
 
-use crate::{eucdist::EuclideanDistanceClassifier, mahalanobis::MahalanobisDistanceClassifier, qda::QDA};
+use crate::{eucdist::EuclideanDistanceClassifier, mahalanobis::MahalanobisDistanceClassifier, qda::Qda};
 
 trait Classifier {
 	fn fit(&mut self, data: ArrayView2<f64>, targets: ArrayView1<usize>);
@@ -23,8 +23,7 @@ trait Classifier {
 	fn score(&self, data: ArrayView2<f64>, targets: ArrayView1<usize>) -> ConfusionMatrix<usize> {
 		let preds = self.predict(data);
 		assert_eq!(preds.len(), targets.len(), "Vectors must have the same length");
-		let cm = preds.confusion_matrix(&targets).unwrap();
-		cm
+		preds.confusion_matrix(&targets).unwrap()
 	}
 }
 
@@ -89,8 +88,10 @@ fn random_dataset_2() -> Result<Dataset<f64, usize, Ix1>, Box<dyn Error>> {
 
 }
 
+type InnerDataset = Dataset<f64, usize, Ix1>;
+type InnerDatasetTuple = (InnerDataset, InnerDataset);
 
-fn load_datasets() -> Result<BTreeMap<&'static str, (Dataset<f64, usize, Ix1>, Dataset<f64, usize, Ix1>)>, Box<dyn Error>> {
+fn load_datasets() -> Result<BTreeMap<&'static str, InnerDatasetTuple>, Box<dyn Error>> {
 	const SPLIT_RATIO: f32 = 0.8;
 	let datasets = btreemap![
 		"Iris" => iris().split_with_ratio(SPLIT_RATIO), 
@@ -108,7 +109,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let classifiers: BTreeMap<&str, Box<dyn Classifier>> = btreemap![
 		"Euclidean distance" => Box::new(EuclideanDistanceClassifier::new()) as Box<dyn Classifier>,
 		"Mahalanobis distance" => Box::new(MahalanobisDistanceClassifier::new()) as Box<dyn Classifier>,
-		"Bayesian QDA" => Box::new(QDA::new()) as Box<dyn Classifier>
+		"Bayesian QDA" => Box::new(Qda::new()) as Box<dyn Classifier>
 	];
 	for (clasname, mut classifier) in classifiers {
 		for (datasetname, dataset) in datasets.iter() {
